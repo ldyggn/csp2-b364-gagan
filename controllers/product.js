@@ -147,25 +147,25 @@ module.exports.archiveProduct = (req, res) => {
 
 };
 
-// [SECTION] Activate Product
-module.exports.activateProduct = (req, res) => {
+	// [SECTION] Activate Product
+	module.exports.activateProduct = (req, res) => {
 
-    let updateActiveField = {
-        isActive: true
-    }
-    
-    return Product.findByIdAndUpdate(req.params.productId, updateActiveField)
-    .then(activateProduct => {
-        if (!activateProduct) {
-        	return res.status(404).send({ error: 'Product not found' });
-        }
-        return res.status(200).send({ 
-        	message: 'Product activated successfully', 
-        	activateProduct: activateProduct
-        });
-    })
-    .catch(err => {
-    	console.error("Error in activating a product: ", err)
-    	return res.status(500).send({ error: 'Failed to activating a product' })
-    });
-};
+		let updateActiveField = {
+			isActive: true
+		}
+		
+		return Product.findByIdAndUpdate(req.params.productId, updateActiveField)
+		.then(activateProduct => {
+			if (!activateProduct) {
+				return res.status(404).send({ error: 'Product not found' });
+			}
+			return res.status(200).send({ 
+				message: 'Product activated successfully', 
+				activateProduct: activateProduct
+			});
+		})
+		.catch(err => {
+			console.error("Error in activating a product: ", err)
+			return res.status(500).send({ error: 'Failed to activate a product' })
+		});
+	};
