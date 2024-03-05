@@ -12,6 +12,7 @@ const port = 4000;
 // Allows access to routes defined within our application
 const userRoutes = require("./routes/user");
 const productRoutes = require("./routes/product");
+const cartRoutes = require("./routes/cart");
 
 // [SECTION] Server Setup
 const app = express();
@@ -28,6 +29,7 @@ mongoose.connection.once('open', () => console.log('Now connected to MongoDB Atl
 // Groups all routes
 app.use("/users", userRoutes);
 app.use("/products", productRoutes);
+app.use("/carts", cartRoutes);
 
 // [SECTION] Server Gateway Response
 if(require.main === module){
