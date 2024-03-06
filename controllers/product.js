@@ -1,6 +1,5 @@
 //[SECTION] Dependencies and Modules
 const Product = require("../models/Product");
-const User = require("../models/User");
 
 // [SECTION] Create Product (Admin Only)
 module.exports.addProduct = (req, res) => {
@@ -169,3 +168,47 @@ module.exports.archiveProduct = (req, res) => {
 			return res.status(500).send({ error: 'Failed to activate a product' })
 		});
 	};
+
+	// [SECTION] Search Products by Name
+module.exports.searchProductsByName = (req, res) => {
+    const { name } = req.body;
+
+    Product.find({ name: { $regex: name, $options: 'i' } })
+        .then(foundProducts => {
+            if (foundProducts.length > 0) {
+                res.status(200).send({ success: true, message: 'Products found by name', products: foundProducts });
+            } else {
+                res.status(404).send({ success: false, error: 'No products found by name' });
+            }
+        })
+        .catch(err => {
+            console.error('Error searching products by name:', err);
+            res.status(500).send({ success: false, error: 'Failed to search products by name' });
+        });
+};
+
+// [SECTION] Search Products by Price Range
+module.exports.searchProductsByPriceRange = (req, res) => {
+    const { minPrice, maxPrice } = req.body;
+    
+    const query = {
+        price: {
+            $gte: minPrice, // Greater than or equal to minPrice
+            $lte: maxPrice  // Less than or equal to maxPrice
+        }
+    };
+
+    // Find products in the database matching the price range query
+    Product.find(query)
+        .then(foundProducts => {
+            if (foundProducts.length > 0) {
+                res.status(200).send({ success: true, message: 'Products found by price range', products: foundProducts });
+            } else {
+                res.status(404).send({ success: false, error: 'No products found by price range' });
+            }
+        })
+        .catch(err => {
+            console.error('Error searching products by price range:', err);
+            res.status(500).send({ success: false, error: 'Internal server error' });
+        });
+};

@@ -29,4 +29,10 @@ router.patch("/:productId/archive", verify, verifyAdmin, productController.archi
 // [SECTION] Route for activating a product
 router.patch("/:productId/activate", verify, verifyAdmin, productController.activateProduct);
 
+// [SECTION] Route for searching products by name
+router.post("/searchByName", productController.searchProductsByName);
+
+// [SECTION] Route for searching products by price range
+router.post("/searchByPrice", productController.searchProductsByPriceRange);
+
 module.exports = router;

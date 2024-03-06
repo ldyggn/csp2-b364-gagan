@@ -140,3 +140,60 @@ module.exports.updateProductQuantity = (req, res) => {
             return res.status(500).send({ error: 'Failed to update product quantity in cart' });
         });
 };
+
+// [SECTION] Remove Item from Cart
+module.exports.removeItemFromCart = (req, res) => {
+    const userId = req.user.id;
+    const productId = req.params.productId;
+
+    // Find the user's cart
+    Cart.findOne({ userId })
+        .then(cart => {
+            // If no cart is found, send a message to the client
+            if (!cart) {
+                return res.status(404).send({ error: 'Cart not found' });
+            }
+
+            // Check if the cart contains the product
+            const cartItemIndex = cart.cartItems.findIndex(item => item.productId === productId);
+
+            if (cartItemIndex !== -1) {
+                // If the product exists in the cart, remove it
+                cart.cartItems.splice(cartItemIndex, 1);
+                // Recalculate the total price of the cart
+                cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
+
+                // Save the updated cart
+                return cart.save();
+            } else {
+                return res.status(404).send({ error: 'Item not found in cart' });
+            }
+        })
+        .then(updatedCart => {
+            // Send a message to the client along with the updated cart content
+            return res.status(200).send({ message: 'Item removed from cart successfully', cart: updatedCart });
+        })
+        .catch(err => {
+            // Send a message to the client along with the error details
+            console.error('Error removing item from cart:', err);
+            return res.status(500).send({ error: 'Failed to remove item from cart' });
+        });
+};
+
+// [SECTION] Clear Cart Items
+module.exports.clearCart = (req, res) => {
+    const userId = req.user.id;
+
+    // Find the user's cart and remove all items
+    Cart.findOneAndUpdate({ userId }, { cartItems: [], totalPrice: 0 }, { new: true })
+        .then(updatedCart => {
+            if (!updatedCart) {
+                return res.status(404).send({ error: 'Cart not found' });
+            }
+            return res.status(200).send({ message: 'Cart cleared successfully', cart: updatedCart });
+        })
+        .catch(err => {
+            console.error('Error clearing cart:', err);
+            return res.status(500).send({ error: 'Failed to clear cart' });
+        });
+};
