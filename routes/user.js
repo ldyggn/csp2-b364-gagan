@@ -6,7 +6,7 @@ const userController = require("../controllers/user");
 // [SECTION] Routing Component
 const router = express.Router();
 
-const {verify, verifyAdmin, isLoggedIn} = require("../auth");
+const {verify, verifyAdmin} = require("../auth");
 
 // [SECTION] Route for user registration
 router.post("/", userController.registerUser);
