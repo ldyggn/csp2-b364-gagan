@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 // [SECTION] Environment Setup
-const port = 4000;
+const port = 4005;
 
 // Allows access to routes defined within our application
 const userRoutes = require("./routes/user");
@@ -29,11 +29,11 @@ mongoose.connect("mongodb+srv://ldgyggn:admin1234@cluster0.wopzhb2.mongodb.net/E
 mongoose.connection.once('open', () => console.log('Now connected to MongoDB Atlas.'))
 
 // Groups all routes
-app.use("/users", userRoutes);
-app.use("/products", productRoutes);
-app.use("/carts", cartRoutes);
-app.use("/orders", orderRoutes);
-app.use("/nodemailers", nodemailerRoutes);
+app.use("/b5/users", userRoutes);
+app.use("/b5/products", productRoutes);
+app.use("/b5/carts", cartRoutes);
+app.use("/b5/orders", orderRoutes);
+app.use("/b5/nodemailers", nodemailerRoutes);
 
 // [SECTION] Server Gateway Response
 if(require.main === module){
