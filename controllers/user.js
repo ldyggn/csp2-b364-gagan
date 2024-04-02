@@ -141,3 +141,26 @@ module.exports.updatePassword = async (req, res) => {
     res.status(500).send({ message: 'Internal server error' });
   }
 };
+
+// [SECTION] Function to update user profile
+module.exports.updateProfile = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const updatedData = req.body;
+
+        // Update the user profile
+        const updatedUser = await User.findByIdAndUpdate(userId, updatedData, { new: true });
+
+        if (!updatedUser) {
+            return res.status(404).send({ error: 'User not found' });
+        }
+
+        // Exclude sensitive information like password
+        updatedUser.password = undefined;
+
+        return res.status(200).send({ message: 'Profile updated successfully', user: updatedUser });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Internal server error' });
+    }
+};

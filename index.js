@@ -14,7 +14,6 @@ const userRoutes = require("./routes/user");
 const productRoutes = require("./routes/product");
 const cartRoutes = require("./routes/cart");
 const orderRoutes = require("./routes/order");
-const nodemailerRoutes = require("./routes/nodemailer");
 
 // [SECTION] Server Setup
 const app = express();
@@ -33,7 +32,6 @@ app.use("/b5/users", userRoutes);
 app.use("/b5/products", productRoutes);
 app.use("/b5/carts", cartRoutes);
 app.use("/b5/orders", orderRoutes);
-app.use("/b5/nodemailers", nodemailerRoutes);
 
 // [SECTION] Server Gateway Response
 if(require.main === module){

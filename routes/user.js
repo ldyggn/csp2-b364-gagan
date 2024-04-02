@@ -23,4 +23,7 @@ router.patch('/:userId/set-as-admin', verify, verifyAdmin, userController.update
 // [SECTION] Route for resetting the password
 router.patch('/update-password', verify, userController.updatePassword);
 
+// [SECTION] Route for updating user profile
+router.patch("/update-profile", verify, userController.updateProfile);
+
 module.exports = router;
