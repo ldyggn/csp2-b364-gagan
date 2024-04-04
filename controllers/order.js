@@ -1,7 +1,7 @@
 const Cart = require("../models/Cart");
 const Order = require("../models/Order");
 
-// [SECTION] Create Order
+// [SECTION] Create Order and Clear Cart
 module.exports.checkout = (req, res) => {
     const userId = req.user.id;
 
@@ -28,8 +28,12 @@ module.exports.checkout = (req, res) => {
             // Save the order document
             return newOrder.save()
                 .then(order => {
-                    // Send a message to the client along with the order details
-                    return res.status(200).send({ message: 'Order created successfully', order });
+                    // Clear the user's cart after successful order creation
+                    return Cart.findOneAndUpdate({ userId }, { cartItems: [], totalPrice: 0 }, { new: true })
+                        .then(() => {
+                            // Send a message to the client along with the order details
+                            return res.status(200).send({ message: 'Order created successfully', order });
+                        });
                 });
         })
         .catch(err => {
