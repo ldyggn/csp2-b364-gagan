@@ -3,21 +3,31 @@ const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 
 // [SECTION] Retrieve User's Cart
-module.exports.getUserCart = (req, res) => {
-    const userId = req.user.id; // 
+module.exports.getUserCart = async (req, res) => {
+    const userId = req.user.id;
 
-    // Find the cart associated with the user ID
-    Cart.findOne({ userId })
-        .then(cart => {
-            if (!cart) {
-                return res.status(404).send({ error: 'Cart not found' });
-            }
-            return res.status(200).send({ cart });
-        })
-        .catch(err => {
-            console.error("Error in fetching user's cart:", err);
-            return res.status(500).send({ error: 'Failed to fetch user\'s cart' });
-        });
+    try {
+        // Find the cart associated with the user ID
+        const cart = await Cart.findOne({ userId }).populate('cartItems.productId');
+
+        if (!cart) {
+            return res.status(404).send({ error: 'Cart not found' });
+        }
+
+        // Map cart items to include product details
+        const populatedCartItems = cart.cartItems.map(item => ({
+            productId: item.productId._id,
+            name: item.productId.name,
+            price: item.productId.price,
+            quantity: item.quantity,
+            subtotal: item.subtotal
+        }));
+
+        return res.status(200).send({ cart: { ...cart.toJSON(), cartItems: populatedCartItems } });
+    } catch (err) {
+        console.error("Error in fetching user's cart:", err);
+        return res.status(500).send({ error: 'Failed to fetch user\'s cart' });
+    }
 };
 
 // [SECTION] Add to Cart
