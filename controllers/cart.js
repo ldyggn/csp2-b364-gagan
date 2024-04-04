@@ -21,55 +21,47 @@ module.exports.getUserCart = (req, res) => {
 };
 
 // [SECTION] Add to Cart
-module.exports.addToCart = (req, res) => {
+module.exports.addToCart = async (req, res) => {
     const userId = req.user.id;
     const { productId, quantity } = req.body;
 
-    // Find the product to be added to the cart
-    Product.findById(productId)
-        .then(product => {
-            if (!product) {
-                return res.status(404).send({ error: 'Product not found' });
-            }
+    try {
+        // Find the product to be added to the cart
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).send({ error: 'Product not found' });
+        }
 
-            // Calculate subtotal for the item
-            const subtotal = product.price * quantity;
+        // Calculate subtotal for the item
+        const subtotal = product.price * quantity;
 
-            // Find the user's cart or create a new one if not exist
-            return Cart.findOne({ userId })
-                .then(cart => {
-                    if (!cart) {
-                        // If cart doesn't exist, create a new one
-                        cart = new Cart({ userId, cartItems: [] });
-                    }
+        // Find the user's cart or create a new one if not exist
+        let cart = await Cart.findOne({ userId });
+        if (!cart) {
+            cart = new Cart({ userId, cartItems: [] });
+        }
 
-                    // Find the item in the cart
-                    const cartItem = cart.cartItems.find(item => item.productId === productId);
-
-                    if (cartItem) {
-                        // If product exists in the cart, update the quantity and subtotal
-                        cartItem.quantity += quantity;
-                        cartItem.subtotal += subtotal;
-                    } else {
-                        // If product doesn't exist in the cart, add it
-                        cart.cartItems.push({ productId, quantity, subtotal });
-                    }
-
-                    // Update the total price of the cart
-                    cart.totalPrice += subtotal;
-
-                    // Save the updated cart to the database
-                    return cart.save();
-                });
-        })
-        .then(updatedCart => {
-            return res.status(200).send({ message: 'Product added to cart successfully', cart: updatedCart });
-        })
-        .catch(err => {
-            console.error('Error adding product to cart:', err);
-            return res.status(500).send({ error: 'Failed to add product to cart' });
+        // Add the item to the cart with product name included
+        cart.cartItems.push({ 
+            productId, 
+            name: product.name, // Add product name here
+            quantity, 
+            subtotal 
         });
+
+        // Update the total price of the cart
+        cart.totalPrice += subtotal;
+
+        // Save the updated cart to the database
+        const updatedCart = await cart.save();
+
+        return res.status(200).send({ message: 'Product added to cart successfully', cart: updatedCart });
+    } catch (err) {
+        console.error('Error adding product to cart:', err);
+        return res.status(500).send({ error: 'Failed to add product to cart' });
+    }
 };
+
 
 // [SECTION] Update Product Quantity
 module.exports.updateProductQuantity = (req, res) => {
