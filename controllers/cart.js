@@ -130,46 +130,47 @@ module.exports.addToCart = async (req, res) => {
 };
 
     // [SECTION] Remove Item from Cart
-    module.exports.removeItemFromCart = async (req, res) => {
-        try {
-            // Extract userId and productId from the request
-            const userId = req.user.id;
-            const productId = req.params.productId;
+module.exports.removeItemFromCart = async (req, res) => {
+    try {
+        // Extract userId and productId from the request
+        const userId = req.user.id;
+        const productId = req.params.productId;
 
-            // Find the cart associated with the userId
-            let cart = await Cart.findOne({ userId });
+        // Find the cart associated with the userId
+        let cart = await Cart.findOne({ userId });
 
-            // If no cart is found, return an error response
-            if (!cart) {
-                return res.status(404).send({ error: 'Cart not found' });
-            }
-
-            // Find the index of the item in the cart array based on the productId
-            const cartItemIndex = cart.cartItems.findIndex(item => item.productId.equals(productId));
-
-            // If the item exists in the cart
-            if (cartItemIndex !== -1) {
-                // Remove the item from the cart
-                cart.cartItems.splice(cartItemIndex, 1);
-
-                // Recalculate the total price of the cart
-                cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
-
-                // Save the updated cart
-                const updatedCart = await cart.save();
-
-                // Return a success response with the updated cart
-                return res.status(200).send({ message: 'Item removed from cart successfully', cart: updatedCart });
-            } else {
-                // If the item doesn't exist in the cart, return an error response
-                return res.status(404).send({ error: 'Item not found in cart' });
-            }
-        } catch (error) {
-            // If an error occurs, log the error and return an error response
-            console.error('Error removing item from cart:', error);
-            return res.status(500).send({ error: 'Failed to remove item from cart' });
+        // If no cart is found, return an error response
+        if (!cart) {
+            return res.status(404).send({ error: 'Cart not found' });
         }
-    };
+
+        // Find the item in the cart corresponding to the productId
+        const updatedCartItems = cart.cartItems.filter(item => !item.productId.equals(productId));
+
+        // If the item exists in the cart
+        if (updatedCartItems.length < cart.cartItems.length) {
+            // Recalculate the total price of the cart
+            const totalPrice = updatedCartItems.reduce((total, item) => total + item.subtotal, 0);
+
+            // Update cart with new cart items and total price
+            cart.cartItems = updatedCartItems;
+            cart.totalPrice = totalPrice;
+
+            // Save the updated cart
+            const updatedCart = await cart.save();
+
+            // Return a success response with the updated cart
+            return res.status(200).send({ message: 'Item removed from cart successfully', cart: updatedCart });
+        } else {
+            // If the item doesn't exist in the cart, return an error response
+            return res.status(404).send({ error: 'Item not found in cart' });
+        }
+    } catch (error) {
+        // If an error occurs, log the error and return an error response
+        console.error('Error removing item from cart:', error);
+        return res.status(500).send({ error: 'Failed to remove item from cart' });
+    }
+};
 
 // [SECTION] Clear Cart Items
 module.exports.clearCart = async (req, res) => {
