@@ -18,10 +18,18 @@ module.exports.checkout = (req, res) => {
                 return res.status(400).send({ error: 'Cart is empty' });
             }
 
+            // Map cart items to the format required by the order schema
+            const productsOrdered = cart.cartItems.map(item => ({
+                productId: item.productId,
+                productName: item.productName,
+                quantity: item.quantity,
+                subtotal: item.subtotal
+            }));
+
             // Create a new order document
             const newOrder = new Order({
                 userId: userId,
-                productsOrdered: cart.cartItems,
+                productsOrdered: productsOrdered,
                 totalPrice: cart.totalPrice
             });
 
