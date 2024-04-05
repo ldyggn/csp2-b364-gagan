@@ -65,130 +65,131 @@ module.exports.addToCart = async (req, res) => {
     }
 };
 
+    // [SECTION] Update Product Quantity
+    module.exports.updateProductQuantity = async (req, res) => {
+    try {
+        // Extract userId, productId, and quantity from the request body
+        const userId = req.user.id;
+        const { productId, quantity } = req.body;
 
-// [SECTION] Update Product Quantity
-module.exports.updateProductQuantity = (req, res) => {
-    const userId = req.user.id;
-    const { productId, quantity } = req.body;
+        // Find the cart associated with the userId
+        let cart = await Cart.findOne({ userId });
 
-    // Find the user's cart
-    Cart.findOne({ userId })
-        .then(cart => {
-            // If no cart is found, send a message to the client
-            if (!cart) {
-                return res.status(404).send({ error: 'Cart not found' });
+        // If no cart is found, return an error response
+        if (!cart) {
+            return res.status(404).send({ error: 'Cart not found' });
+        }
+
+        // Find the item in the cart corresponding to the productId
+        let cartItem = cart.cartItems.find(item => item.productId.equals(productId));
+
+        // If the item exists in the cart
+        if (cartItem) {
+            // Fetch the price of the product
+            const productPrice = await getProductPrice(productId);
+
+            // If the product price is not found, return an error response
+            if (productPrice === null) {
+                return res.status(404).send({ error: 'Product not found' });
             }
 
-            // Check if the cart contains the product
-            const cartItem = cart.cartItems.find(item => item.productId === productId);
+            // Calculate the change in quantity
+            const quantityChange = quantity - cartItem.quantity;
 
-            if (cartItem) {
-                // If the product exists in the cart, update the quantity and subtotal
-                cartItem.quantity = quantity;
+            // Update the quantity of the item in the cart
+            cartItem.quantity = quantity;
 
-                // Fetch the product to get the price
-                Product.findById(productId)
-                    .then(product => {
-                        if (!product) {
-                            return res.status(404).send({ error: 'Product not found' });
-                        }
-                        cartItem.subtotal = quantity * product.price;
+            // Update the subtotal based on the change in quantity
+            cartItem.subtotal += quantityChange * productPrice;
+        } else {
+            // If the item doesn't exist in the cart, add it
+            const productPrice = await getProductPrice(productId);
 
-                        // Recalculate the total price of the cart
-                        cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
-
-                        // Save the updated cart
-                        return cart.save();
-                    })
-                    .then(updatedCart => {
-                        return res.status(200).send({ message: 'Product quantity updated successfully', cart: updatedCart });
-                    })
-                    .catch(err => {
-                        console.error('Error fetching product or updating cart:', err);
-                        return res.status(500).send({ error: 'Failed to update product quantity in cart' });
-                    });
-            } else {
-                // If the product doesn't exist in the cart, add it
-                Product.findById(productId)
-                    .then(product => {
-                        if (!product) {
-                            return res.status(404).send({ error: 'Product not found' });
-                        }
-                        const subtotal = product.price * quantity;
-                        cart.cartItems.push({ productId, quantity, subtotal });
-                        cart.totalPrice += subtotal;
-
-                        // Save the updated cart
-                        return cart.save();
-                    })
-                    .then(updatedCart => {
-                        return res.status(200).send({ message: 'Product added to cart successfully', cart: updatedCart });
-                    })
-                    .catch(err => {
-                        console.error('Error finding product or updating cart:', err);
-                        return res.status(500).send({ error: 'Failed to update product quantity in cart' });
-                    });
+            // If the product price is not found, return an error response
+            if (productPrice === null) {
+                return res.status(404).send({ error: 'Product not found' });
             }
-        })
-        .catch(err => {
-            console.error('Error finding cart:', err);
-            return res.status(500).send({ error: 'Failed to update product quantity in cart' });
-        });
+
+            // Add the new item to the cart with the specified quantity and subtotal
+            cart.cartItems.push({ productId, quantity, subtotal: quantity * productPrice });
+        }
+
+        // Recalculate the total price of the cart
+        cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
+
+        // Save the updated cart
+        const updatedCart = await cart.save();
+
+        // Return a success response with the updated cart
+        return res.status(200).send({ message: 'Product quantity updated successfully', cart: updatedCart });
+    } catch (error) {
+        // If an error occurs, log the error and return an error response
+        console.error('Error updating product quantity:', error);
+        return res.status(500).send({ error: 'Failed to update product quantity in cart' });
+    }
 };
 
-// [SECTION] Remove Item from Cart
-module.exports.removeItemFromCart = (req, res) => {
-    const userId = req.user.id;
-    const productId = req.params.productId;
+    // [SECTION] Remove Item from Cart
+    module.exports.removeItemFromCart = async (req, res) => {
+        try {
+            // Extract userId and productId from the request
+            const userId = req.user.id;
+            const productId = req.params.productId;
 
-    // Find the user's cart
-    Cart.findOne({ userId })
-        .then(cart => {
-            // If no cart is found, send a message to the client
+            // Find the cart associated with the userId
+            let cart = await Cart.findOne({ userId });
+
+            // If no cart is found, return an error response
             if (!cart) {
                 return res.status(404).send({ error: 'Cart not found' });
             }
 
-            // Check if the cart contains the product
-            const cartItemIndex = cart.cartItems.findIndex(item => item.productId === productId);
+            // Find the index of the item in the cart array based on the productId
+            const cartItemIndex = cart.cartItems.findIndex(item => item.productId.equals(productId));
 
+            // If the item exists in the cart
             if (cartItemIndex !== -1) {
-                // If the product exists in the cart, remove it
+                // Remove the item from the cart
                 cart.cartItems.splice(cartItemIndex, 1);
+
                 // Recalculate the total price of the cart
                 cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
 
                 // Save the updated cart
-                return cart.save();
+                const updatedCart = await cart.save();
+
+                // Return a success response with the updated cart
+                return res.status(200).send({ message: 'Item removed from cart successfully', cart: updatedCart });
             } else {
+                // If the item doesn't exist in the cart, return an error response
                 return res.status(404).send({ error: 'Item not found in cart' });
             }
-        })
-        .then(updatedCart => {
-            // Send a message to the client along with the updated cart content
-            return res.status(200).send({ message: 'Item removed from cart successfully', cart: updatedCart });
-        })
-        .catch(err => {
-            // Send a message to the client along with the error details
-            console.error('Error removing item from cart:', err);
+        } catch (error) {
+            // If an error occurs, log the error and return an error response
+            console.error('Error removing item from cart:', error);
             return res.status(500).send({ error: 'Failed to remove item from cart' });
-        });
-};
+        }
+    };
 
 // [SECTION] Clear Cart Items
-module.exports.clearCart = (req, res) => {
-    const userId = req.user.id;
+module.exports.clearCart = async (req, res) => {
+    try {
+        // Extract userId from the request
+        const userId = req.user.id;
 
-    // Find the user's cart and remove all items
-    Cart.findOneAndUpdate({ userId }, { cartItems: [], totalPrice: 0 }, { new: true })
-        .then(updatedCart => {
-            if (!updatedCart) {
-                return res.status(404).send({ error: 'Cart not found' });
-            }
-            return res.status(200).send({ message: 'Cart cleared successfully', cart: updatedCart });
-        })
-        .catch(err => {
-            console.error('Error clearing cart:', err);
-            return res.status(500).send({ error: 'Failed to clear cart' });
-        });
+        // Find the cart associated with the userId and update it to clear cart items and set total price to 0
+        const updatedCart = await Cart.findOneAndUpdate({ userId }, { cartItems: [], totalPrice: 0 }, { new: true });
+
+        // If no updated cart is found, return an error response
+        if (!updatedCart) {
+            return res.status(404).send({ error: 'Cart not found' });
+        }
+
+        // Return a success response with the updated cart
+        return res.status(200).send({ message: 'Cart cleared successfully', cart: updatedCart });
+    } catch (error) {
+        // If an error occurs, log the error and return an error response
+        console.error('Error clearing cart:', error);
+        return res.status(500).send({ error: 'Failed to clear cart' });
+    }
 };
