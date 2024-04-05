@@ -45,28 +45,33 @@ module.exports.checkout = (req, res) => {
 
 // [SECTION] Retrieve Logged In User's Orders 
 module.exports.getOrders = (req, res) => {
-    return Order.find({userId : req.user.id})
+    Order.find({ userId: req.user.id })
+        .populate('productsOrdered.productId') 
         .then(orders => {
-            if (!orders) {
+            if (!orders || orders.length === 0) {
                 return res.status(404).send({ error: 'No orders found' });
             }
             return res.status(200).send({ orders });
         })
         .catch(err => {
-            console.error("Error in fetching orders")
-            return res.status(500).send({ error: 'Failed to fetch orders' })
+            console.error("Error in fetching orders:", err);
+            return res.status(500).send({ error: 'Failed to fetch orders' });
         });
-    };
-    
+};
+
 // [SECTION] Retrieve All Orders
 module.exports.getAllOrders = (req, res) => {
     // Fetch all orders from the database
     Order.find()
+        .populate('productsOrdered.productId') 
         .then(orders => {
-            res.status(200).send({ orders });
+            if (!orders || orders.length === 0) {
+                return res.status(404).send({ error: 'No orders found' });
+            }
+            return res.status(200).send({ orders });
         })
         .catch(err => {
             console.error('Error retrieving all orders:', err);
-            res.status(500).send({ error: 'Failed to retrieve all orders' });
+            return res.status(500).send({ error: 'Failed to retrieve all orders' });
         });
 };
