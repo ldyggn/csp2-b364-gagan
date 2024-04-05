@@ -15,15 +15,8 @@ module.exports.getUserCart = async (req, res) => {
         }
 
         // Map cart items to include product details
-        const populatedCartItems = cart.cartItems.map(item => ({
-            productId: item.productId._id,
-            name: item.productId.name,
-            price: item.productId.price,
-            quantity: item.quantity,
-            subtotal: item.subtotal
-        }));
 
-        return res.status(200).send({ cart: { ...cart.toJSON(), cartItems: populatedCartItems } });
+        return res.status(200).send({ cart });
     } catch (err) {
         console.error("Error in fetching user's cart:", err);
         return res.status(500).send({ error: 'Failed to fetch user\'s cart' });
