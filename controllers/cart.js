@@ -44,21 +44,13 @@ module.exports.addToCart = async (req, res) => {
             cart = new Cart({ userId, cartItems: [] });
         }
 
-        // Check if the product is already in the cart
-        const existingItemIndex = cart.cartItems.findIndex(item => item.productId.toString() === productId);
-        if (existingItemIndex !== -1) {
-            // Update quantity and subtotal if the product is already in the cart
-            cart.cartItems[existingItemIndex].quantity += quantity;
-            cart.cartItems[existingItemIndex].subtotal += subtotal;
-        } else {
-            // Add the item to the cart if it's not already there
-            cart.cartItems.push({ 
-                productId, 
-                name: product.name, // Add product name here
-                quantity, 
-                subtotal 
-            });
-        }
+        // Add the item to the cart with product name included
+        cart.cartItems.push({ 
+            productId, 
+            name: product.name, // Add product name here
+            quantity, 
+            subtotal 
+        });
 
         // Update the total price of the cart
         cart.totalPrice += subtotal;
@@ -73,112 +65,131 @@ module.exports.addToCart = async (req, res) => {
     }
 };
 
-// [SECTION] Update Product Quantity in Cart
-module.exports.updateProductQuantity = async (req, res) => {
-    const userId = req.user.id;
-    const { productId, quantity } = req.body;
-
+    // [SECTION] Update Product Quantity
+    module.exports.updateProductQuantity = async (req, res) => {
     try {
-        // Find the user's cart
+        // Extract userId, productId, and quantity from the request body
+        const userId = req.user.id;
+        const { productId, quantity } = req.body;
+
+        // Find the cart associated with the userId
         let cart = await Cart.findOne({ userId });
 
+        // If no cart is found, return an error response
         if (!cart) {
             return res.status(404).send({ error: 'Cart not found' });
         }
 
-        // Find the cart item to update
-        const cartItem = cart.cartItems.find(item => item.productId.toString() === productId);
+        // Find the item in the cart corresponding to the productId
+        let cartItem = cart.cartItems.find(item => item.productId.equals(productId));
 
-        if (!cartItem) {
-            return res.status(404).send({ error: 'Product not found in cart' });
+        // If the item exists in the cart
+        if (cartItem) {
+            // Fetch the price of the product
+            const productPrice = await getProductPrice(productId);
+
+            // If the product price is not found, return an error response
+            if (productPrice === null) {
+                return res.status(404).send({ error: 'Product not found' });
+            }
+
+            // Calculate the change in quantity
+            const quantityChange = quantity - cartItem.quantity;
+
+            // Update the quantity of the item in the cart
+            cartItem.quantity = quantity;
+
+            // Update the subtotal based on the change in quantity
+            cartItem.subtotal += quantityChange * productPrice;
+        } else {
+            // If the item doesn't exist in the cart, add it
+            const productPrice = await getProductPrice(productId);
+
+            // If the product price is not found, return an error response
+            if (productPrice === null) {
+                return res.status(404).send({ error: 'Product not found' });
+            }
+
+            // Add the new item to the cart with the specified quantity and subtotal
+            cart.cartItems.push({ productId, quantity, subtotal: quantity * productPrice });
         }
 
-        // Find the product in the database
-        const product = await Product.findById(productId);
-
-        if (!product) {
-            return res.status(404).send({ error: 'Product not found' });
-        }
-
-        // Calculate differences in quantity and subtotal
-        const oldQuantity = cartItem.quantity;
-        const oldSubtotal = cartItem.subtotal;
-        const newSubtotal = product.price * quantity;
-        const quantityDiff = quantity - oldQuantity;
-
-        // Update cart item details
-        cartItem.quantity = quantity;
-        cartItem.subtotal = newSubtotal;
-        // Update total price of the cart
-        cart.totalPrice += quantityDiff * product.price;
+        // Recalculate the total price of the cart
+        cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
 
         // Save the updated cart
-        await cart.save();
+        const updatedCart = await cart.save();
 
-        return res.status(200).send({ message: 'Product quantity updated successfully', cart });
-    } catch (err) {
-        console.error('Error updating product quantity:', err);
-        return res.status(500).send({ error: 'Failed to update product quantity' });
+        // Return a success response with the updated cart
+        return res.status(200).send({ message: 'Product quantity updated successfully', cart: updatedCart });
+    } catch (error) {
+        // If an error occurs, log the error and return an error response
+        console.error('Error updating product quantity:', error);
+        return res.status(500).send({ error: 'Failed to update product quantity in cart' });
     }
 };
 
-// [SECTION] Remove Item from Cart
-module.exports.removeItemFromCart = async (req, res) => {
-    const userId = req.user.id;
-    const productId = req.params.productId;
+    // [SECTION] Remove Item from Cart
+    module.exports.removeItemFromCart = async (req, res) => {
+        try {
+            // Extract userId and productId from the request
+            const userId = req.user.id;
+            const productId = req.params.productId;
 
-    try {
-        // Find the user's cart
-        let cart = await Cart.findOne({ userId });
+            // Find the cart associated with the userId
+            let cart = await Cart.findOne({ userId });
 
-        if (!cart) {
-            return res.status(404).send({ error: 'Cart not found' });
+            // If no cart is found, return an error response
+            if (!cart) {
+                return res.status(404).send({ error: 'Cart not found' });
+            }
+
+            // Find the index of the item in the cart array based on the productId
+            const cartItemIndex = cart.cartItems.findIndex(item => item.productId.equals(productId));
+
+            // If the item exists in the cart
+            if (cartItemIndex !== -1) {
+                // Remove the item from the cart
+                cart.cartItems.splice(cartItemIndex, 1);
+
+                // Recalculate the total price of the cart
+                cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
+
+                // Save the updated cart
+                const updatedCart = await cart.save();
+
+                // Return a success response with the updated cart
+                return res.status(200).send({ message: 'Item removed from cart successfully', cart: updatedCart });
+            } else {
+                // If the item doesn't exist in the cart, return an error response
+                return res.status(404).send({ error: 'Item not found in cart' });
+            }
+        } catch (error) {
+            // If an error occurs, log the error and return an error response
+            console.error('Error removing item from cart:', error);
+            return res.status(500).send({ error: 'Failed to remove item from cart' });
         }
-
-        // Find the index of the cart item to remove
-        const cartItemIndex = cart.cartItems.findIndex(item => item.productId.toString() === productId);
-
-        if (cartItemIndex === -1) {
-            return res.status(404).send({ error: 'Product not found in cart' });
-        }
-
-        // Remove the cart item and update total price
-        const { quantity, subtotal } = cart.cartItems[cartItemIndex];
-        cart.cartItems.splice(cartItemIndex, 1);
-        cart.totalPrice -= subtotal;
-
-        // Save the updated cart
-        await cart.save();
-
-        return res.status(200).send({ message: 'Product removed from cart successfully', cart });
-    } catch (err) {
-        console.error('Error removing product from cart:', err);
-        return res.status(500).send({ error: 'Failed to remove product from cart' });
-    }
-};
+    };
 
 // [SECTION] Clear Cart Items
-module.exports.clearCartItems = async (req, res) => {
-    const userId = req.user.id;
-
+module.exports.clearCart = async (req, res) => {
     try {
-        // Find the user's cart
-        let cart = await Cart.findOne({ userId });
+        // Extract userId from the request
+        const userId = req.user.id;
 
-        if (!cart) {
+        // Find the cart associated with the userId and update it to clear cart items and set total price to 0
+        const updatedCart = await Cart.findOneAndUpdate({ userId }, { cartItems: [], totalPrice: 0 }, { new: true });
+
+        // If no updated cart is found, return an error response
+        if (!updatedCart) {
             return res.status(404).send({ error: 'Cart not found' });
         }
 
-        // Clear cart items and update total price
-        cart.cartItems = [];
-        cart.totalPrice = 0;
-
-        // Save the updated cart
-        await cart.save();
-
-        return res.status(200).send({ message: 'Cart items cleared successfully', cart });
-    } catch (err) {
-        console.error('Error clearing cart items:', err);
-        return res.status(500).send({ error: 'Failed to clear cart items' });
+        // Return a success response with the updated cart
+        return res.status(200).send({ message: 'Cart cleared successfully', cart: updatedCart });
+    } catch (error) {
+        // If an error occurs, log the error and return an error response
+        console.error('Error clearing cart:', error);
+        return res.status(500).send({ error: 'Failed to clear cart' });
     }
 };
