@@ -65,17 +65,6 @@ module.exports.addToCart = async (req, res) => {
     }
 };
 
-// Function to fetch the price of a product
-async function getProductPrice(productId) {
-    try {
-        const product = await Product.findById(productId);
-        return product ? product.price : null;
-    } catch (error) {
-        console.error('Error fetching product price:', error);
-        return null;
-    }
-}
-
 // Update Product Quantity
 module.exports.updateProductQuantity = async (req, res) => {
     try {
@@ -133,7 +122,8 @@ module.exports.updateProductQuantity = async (req, res) => {
 // Remove Item from Cart
 module.exports.removeItemFromCart = async (req, res) => {
     try {
-        const { userId, productId } = req.body;
+        const userId = req.user.id; // Assuming userId is extracted from authentication
+        const productId = req.params.productId; // Extract productId from request parameters
 
         // Find the cart associated with the userId
         let cart = await Cart.findOne({ userId });
@@ -144,16 +134,15 @@ module.exports.removeItemFromCart = async (req, res) => {
         }
 
         // Find the item in the cart corresponding to the productId
-        const updatedCartItems = cart.cartItems.filter(item => !item.productId.equals(productId));
+        const removedItem = cart.cartItems.find(item => item.productId.equals(productId));
 
         // If the item exists in the cart
-        if (updatedCartItems.length < cart.cartItems.length) {
+        if (removedItem) {
+            // Update cartItems array by filtering out the removed item
+            cart.cartItems = cart.cartItems.filter(item => !item.productId.equals(productId));
+            
             // Recalculate the total price of the cart
-            const totalPrice = updatedCartItems.reduce((total, item) => total + item.subtotal, 0);
-
-            // Update cart with new cart items and total price
-            cart.cartItems = updatedCartItems;
-            cart.totalPrice = totalPrice;
+            cart.totalPrice = cart.cartItems.reduce((total, item) => total + item.subtotal, 0);
 
             // Save the updated cart
             const updatedCart = await cart.save();
