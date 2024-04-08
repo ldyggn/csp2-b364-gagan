@@ -3,7 +3,7 @@ const Order = require("../models/Order");
 
 module.exports.checkout = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user._id; // Assuming user ID is stored in _id
 
         // Find the user's cart
         const cart = await Cart.findOne({ userId }).populate('cartItems.productId');
@@ -50,7 +50,7 @@ module.exports.checkout = async (req, res) => {
 // [SECTION] Retrieve Logged In User's Orders 
 module.exports.getOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ userId: req.user.id });
+        const orders = await Order.find({ userId: req.user._id }).populate('userId');
 
         if (!orders || orders.length === 0) {
             return res.status(404).json({ error: 'No orders found' });
@@ -66,7 +66,7 @@ module.exports.getOrders = async (req, res) => {
 // [SECTION] Retrieve All Orders
 module.exports.getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.find();
+        const orders = await Order.find().populate('userId');
 
         if (!orders || orders.length === 0) {
             return res.status(404).json({ error: 'No orders found' });

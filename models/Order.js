@@ -2,9 +2,11 @@ const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
     userId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId, // Assuming user ID is stored as ObjectId
+        ref: 'User', // Reference to the User model
         required: [true, 'User ID is Required']
     },
+    
     productsOrdered: [
         {
             productId: {
