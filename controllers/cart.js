@@ -65,12 +65,21 @@ module.exports.addToCart = async (req, res) => {
     }
 };
 
-    // [SECTION] Update Product Quantity
-    module.exports.updateProductQuantity = async (req, res) => {
+// Function to fetch the price of a product
+async function getProductPrice(productId) {
     try {
-        // Extract userId, productId, and quantity from the request body
-        const userId = req.user.id;
-        const { productId, quantity } = req.body;
+        const product = await Product.findById(productId);
+        return product ? product.price : null;
+    } catch (error) {
+        console.error('Error fetching product price:', error);
+        return null;
+    }
+}
+
+// Update Product Quantity
+module.exports.updateProductQuantity = async (req, res) => {
+    try {
+        const { userId, productId, quantity } = req.body;
 
         // Find the cart associated with the userId
         let cart = await Cart.findOne({ userId });
@@ -102,16 +111,8 @@ module.exports.addToCart = async (req, res) => {
             // Update the subtotal based on the change in quantity
             cartItem.subtotal += quantityChange * productPrice;
         } else {
-            // If the item doesn't exist in the cart, add it
-            const productPrice = await getProductPrice(productId);
-
-            // If the product price is not found, return an error response
-            if (productPrice === null) {
-                return res.status(404).send({ error: 'Product not found' });
-            }
-
-            // Add the new item to the cart with the specified quantity and subtotal
-            cart.cartItems.push({ productId, quantity, subtotal: quantity * productPrice });
+            // If the item doesn't exist in the cart, return an error response
+            return res.status(404).send({ error: 'Item not found in cart' });
         }
 
         // Recalculate the total price of the cart
@@ -129,12 +130,10 @@ module.exports.addToCart = async (req, res) => {
     }
 };
 
-    // [SECTION] Remove Item from Cart
+// Remove Item from Cart
 module.exports.removeItemFromCart = async (req, res) => {
     try {
-        // Extract userId and productId from the request
-        const userId = req.user.id;
-        const productId = req.params.productId;
+        const { userId, productId } = req.body;
 
         // Find the cart associated with the userId
         let cart = await Cart.findOne({ userId });
@@ -171,6 +170,7 @@ module.exports.removeItemFromCart = async (req, res) => {
         return res.status(500).send({ error: 'Failed to remove item from cart' });
     }
 };
+
 
 // [SECTION] Clear Cart Items
 module.exports.clearCart = async (req, res) => {
