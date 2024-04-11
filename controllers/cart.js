@@ -68,7 +68,10 @@ module.exports.addToCart = async (req, res) => {
 // Update Product Quantity
 module.exports.updateProductQuantity = async (req, res) => {
     try {
-        const { userId, productId, quantity } = req.body;
+        // Extract the user ID from the request token
+        const userId = req.user.id;
+
+        const { productId, quantity } = req.body;
 
         // Find the cart associated with the userId
         let cart = await Cart.findOne({ userId });
